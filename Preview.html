@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSV Image Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #E3000F;
+    --white: #FFFFFF;
+    --black: #0A0A0A;
+    --gray: #1A1A1A;
+    --gray-mid: #2C2C2C;
+    --gray-light: #888;
+    --accent: #FF3B47;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 60px,
+        rgba(227,0,15,0.03) 60px,
+        rgba(227,0,15,0.03) 61px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 60px,
+        rgba(227,0,15,0.03) 60px,
+        rgba(227,0,15,0.03) 61px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 60px;
+    border-bottom: 1px solid var(--gray-mid);
+    padding-bottom: 28px;
+  }
+
+  .psv-badge {
+    background: var(--red);
+    color: var(--white);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+    padding-right: 28px;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 4vw, 42px);
+    letter-spacing: 3px;
+    color: var(--white);
+  }
+
+  header h1 span { color: var(--red); }
+
+  /* Main grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Card */
+  .card {
+    background: var(--gray);
+    border: 1px solid var(--gray-mid);
+    border-radius: 2px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--red);
+  }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--gray-light);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--gray-mid);
+    border-radius: 2px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--red);
+    background: rgba(227,0,15,0.05);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .upload-zone p {
+    font-size: 14px;
+    color: var(--gray-light);
+  }
+
+  .upload-zone p strong {
+    color: var(--red);
+    font-weight: 600;
+  }
+
+  /* Preview image */
+  #preview-img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: 2px;
+    display: none;
+    margin-bottom: 12px;
+    border: 1px solid var(--gray-mid);
+  }
+
+  /* Inputs */
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray-light);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .field input, .field textarea {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--gray-mid);
+    border-radius: 2px;
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+
+  .field input:focus, .field textarea:focus {
+    border-color: var(--red);
+  }
+
+  /* Button */
+  .btn-predict {
+    width: 100%;
+    background: var(--red);
+    color: var(--white);
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    padding: 14px;
+    cursor: pointer;
+    clip-path: polygon(0 0, 100% 0, 97% 100%, 3% 100%);
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+
+  .btn-predict:hover { background: var(--accent); transform: scaleX(1.01); }
+  .btn-predict:disabled { background: var(--gray-mid); cursor: not-allowed; transform: none; }
+
+  /* Results */
+  #results { display: none; }
+
+  .likes-hero {
+    text-align: center;
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--gray-mid);
+    margin-bottom: 24px;
+  }
+
+  .likes-hero .label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-light);
+    margin-bottom: 8px;
+  }
+
+  .likes-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 8vw, 80px);
+    color: var(--red);
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+
+  .likes-unit {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--gray-light);
+    letter-spacing: 3px;
+    margin-top: 4px;
+  }
+
+  /* Labels grid */
+  .labels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .label-item {
+    background: var(--black);
+    border: 1px solid var(--gray-mid);
+    border-radius: 2px;
+    padding: 12px 14px;
+    transition: border-color 0.3s;
+  }
+
+  .label-item.active {
+    border-color: var(--red);
+    background: rgba(227,0,15,0.06);
+  }
+
+  .label-item .name {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray-light);
+    margin-bottom: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .label-item.active .name { color: var(--white); }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gray-mid);
+  }
+
+  .label-item.active .dot { background: var(--red); }
+
+  .prob-bar-bg {
+    height: 4px;
+    background: var(--gray-mid);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .prob-bar {
+    height: 100%;
+    background: var(--red);
+    border-radius: 2px;
+    width: 0;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .prob-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    margin-top: 5px;
+  }
+
+  /* Loading */
+  .loader {
+    display: none;
+    text-align: center;
+    padding: 40px 0;
+  }
+
+  .loader-ring {
+    width: 48px; height: 48px;
+    border: 3px solid var(--gray-mid);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  .loader p {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: var(--gray-light);
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-msg {
+    display: none;
+    background: rgba(227,0,15,0.1);
+    border: 1px solid var(--red);
+    border-radius: 2px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--accent);
+    margin-top: 12px;
+  }
+
+  /* Fade in */
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="psv-badge">PSV</div>
+    <h1>IMAGE <span>PREDICTOR</span></h1>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- LEFT: Input -->
+    <div class="card">
+      <div class="card-title">Upload & Analyze</div>
+
+      <!-- Image preview -->
+      <img id="preview-img" alt="Preview" />
+
+      <!-- Drop zone -->
+      <div class="upload-zone" id="drop-zone">
+        <input type="file" id="image-input" accept="image/*" />
+        <span class="upload-icon">📸</span>
+        <p><strong>Click or drag</strong> to upload an image</p>
+        <p style="margin-top:4px; font-size:12px;">JPG, PNG, WEBP</p>
+      </div>
+
+      <div style="height: 20px;"></div>
+
+      <div class="field">
+        <label>Caption</label>
+        <textarea id="caption" rows="3" placeholder="Write the post caption here..."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Timestamp</label>
+        <input type="datetime-local" id="timestamp" />
+      </div>
+
+      <button class="btn-predict" id="btn-predict" disabled>ANALYZE IMAGE</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="card">
+      <div class="card-title">Prediction Results</div>
+
+      <div class="loader" id="loader">
+        <div class="loader-ring"></div>
+        <p>ANALYZING...</p>
+      </div>
+
+      <div id="results">
+        <!-- Likes -->
+        <div class="likes-hero fade-in">
+          <div class="label">Predicted Engagement</div>
+          <div class="likes-number" id="likes-number">—</div>
+          <div class="likes-unit">LIKES</div>
+        </div>
+
+        <!-- Labels -->
+        <div class="card-title" style="margin-bottom:14px;">Detected Categories</div>
+        <div class="labels-grid" id="labels-grid"></div>
+      </div>
+
+      <!-- Placeholder when no results -->
+      <div id="placeholder" style="text-align:center; padding: 60px 0;">
+        <div style="font-size:48px; margin-bottom:16px;">⚽</div>
+        <p style="color: var(--gray-light); font-size:13px; letter-spacing:1px;">
+          Upload an image to see<br>the prediction
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API_URL = "http://127.0.0.1:8000/predict";
+  const LABELS  = ["CROWD", "CELEBRATION", "GRAPHIC", "PLAYER", "ACTION"];
+
+  const imageInput  = document.getElementById("image-input");
+  const dropZone    = document.getElementById("drop-zone");
+  const previewImg  = document.getElementById("preview-img");
+  const btnPredict  = document.getElementById("btn-predict");
+  const captionEl   = document.getElementById("caption");
+  const timestampEl = document.getElementById("timestamp");
+  const loader      = document.getElementById("loader");
+  const results     = document.getElementById("results");
+  const placeholder = document.getElementById("placeholder");
+  const errorMsg    = document.getElementById("error-msg");
+
+  // Set default timestamp to now
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  timestampEl.value = now.toISOString().slice(0, 16);
+
+  let selectedFile = null;
+
+  // Drag & drop
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  imageInput.addEventListener("change", () => {
+    if (imageInput.files[0]) handleFile(imageInput.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      previewImg.style.display = "block";
+      dropZone.style.display = "none";
+    };
+    reader.readAsDataURL(file);
+    btnPredict.disabled = false;
+  }
+
+  // Predict
+  btnPredict.addEventListener("click", async () => {
+    if (!selectedFile) return;
+
+    errorMsg.style.display = "none";
+    loader.style.display   = "block";
+    results.style.display  = "none";
+    placeholder.style.display = "none";
+    btnPredict.disabled    = true;
+
+    const formData = new FormData();
+    formData.append("image", selectedFile);
+    formData.append("caption", captionEl.value);
+
+    // Format timestamp
+    const ts = new Date(timestampEl.value);
+    const formatted = ts.getFullYear() + "-" +
+      String(ts.getMonth()+1).padStart(2,"0") + "-" +
+      String(ts.getDate()).padStart(2,"0") + " " +
+      String(ts.getHours()).padStart(2,"0") + ":" +
+      String(ts.getMinutes()).padStart(2,"0") + ":00";
+    formData.append("timestamp", formatted);
+
+    try {
+      const res  = await fetch(API_URL, { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+      renderResults(data);
+    } catch (err) {
+      errorMsg.textContent = "⚠ " + err.message + ". Make sure the backend is running.";
+      errorMsg.style.display = "block";
+      placeholder.style.display = "block";
+    } finally {
+      loader.style.display = "none";
+      btnPredict.disabled  = false;
+    }
+  });
+
+  function renderResults(data) {
+    // Likes
+    animateNumber(document.getElementById("likes-number"), data.predicted_likes);
+
+    // Labels grid
+    const grid = document.getElementById("labels-grid");
+    grid.innerHTML = "";
+
+    LABELS.forEach(label => {
+      const prob   = data.label_probs[label] ?? 0;
+      const active = data.labels[label] === 1;
+      const pct    = Math.round(prob * 100);
+
+      const item = document.createElement("div");
+      item.className = "label-item" + (active ? " active" : "");
+      item.innerHTML = `
+        <div class="name">
+          ${label}
+          <span class="dot"></span>
+        </div>
+        <div class="prob-bar-bg">
+          <div class="prob-bar" data-width="${pct}"></div>
+        </div>
+        <div class="prob-val">${pct}%</div>
+      `;
+      grid.appendChild(item);
+    });
+
+    results.style.display = "block";
+    results.classList.add("fade-in");
+
+    // Animate bars after render
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".prob-bar").forEach(bar => {
+        bar.style.width = bar.dataset.width + "%";
+      });
+    });
+  }
+
+  function animateNumber(el, target) {
+    const duration = 800;
+    const start    = performance.now();
+    const from     = 0;
+
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const ease     = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(from + (target - from) * ease).toLocaleString();
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+</script>
+</body>
+</html>
