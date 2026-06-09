@@ -1,8 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from datetime import datetime
 from predict import predict
 
+
 app = FastAPI(title="Image Like Predictor")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def index():
+    return FileResponse("static/index.html")
 
 
 @app.post("/predict")
