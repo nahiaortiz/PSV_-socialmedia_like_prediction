@@ -467,10 +467,6 @@
   const placeholder = document.getElementById("placeholder");
   const errorMsg    = document.getElementById("error-msg");
 
-  // Set default timestamp to now
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  timestampEl.value = now.toISOString().slice(0, 16);
 
   let selectedFile = null;
 
@@ -515,12 +511,9 @@
     formData.append("caption", captionEl.value);
 
     // Format timestamp
-    const ts = new Date(timestampEl.value);
-    const formatted = ts.getFullYear() + "-" +
-      String(ts.getMonth()+1).padStart(2,"0") + "-" +
-      String(ts.getDate()).padStart(2,"0") + " " +
-      String(ts.getHours()).padStart(2,"0") + ":" +
-      String(ts.getMinutes()).padStart(2,"0") + ":00";
+    const rawTs = timestampEl.value; // "2024-03-15T14:30"
+    const [datePart, timePart] = rawTs.split("T");
+    const formatted = `${datePart} ${timePart}:00`;
     formData.append("timestamp", formatted);
 
     try {
